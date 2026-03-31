@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
-import '../travel_spot.dart'; // Nishchit hoye nin path-ti thik ache kina
+import '../models/travel_spot.dart';
+import '../travel_spot.dart';
 
 class AdminDashboard extends StatefulWidget {
   final List<TravelSpot> currentSpots;
-  final Function(List<TravelSpot>) onSpotsUpdated;
+  final ValueChanged<List<TravelSpot>> onSpotsUpdated;
 
   const AdminDashboard({
-    super.key, // Latest Flutter syntax
+    super.key,
     required this.currentSpots,
     required this.onSpotsUpdated,
   });
@@ -21,53 +22,138 @@ class _AdminDashboardState extends State<AdminDashboard> {
   @override
   void initState() {
     super.initState();
-    // Widget theke data editable list-e copy kora
+    // Safe initialization
     editableSpots = List.from(widget.currentSpots);
   }
 
-  // Spot Update korar logic
-  void _updateSpot(int index, TravelSpot updatedSpot) {
-    setState(() {
-      editableSpots[index] = updatedSpot;
-    });
-    widget.onSpotsUpdated(editableSpots);
-  }
+  // Notun Spot Add korar Dialog
+  void _showAddSpotDialog() {
+    String name = '';
+    String description = '';
+    String imageUrl = '';
 
-  // Spot Delete korar logic
-  void _deleteSpot(int index) {
-    setState(() {
-      editableSpots.removeAt(index);
-    });
-    widget.onSpotsUpdated(editableSpots);
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Add New Travel Spot", style: TextStyle(fontWeight: FontWeight.bold)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                decoration: const InputDecoration(labelText: "Spot Name", border: OutlineInputBorder()),
+                onChanged: (value) => name = value,
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                decoration: const InputDecoration(labelText: "Description", border: OutlineInputBorder()),
+                maxLines: 3,
+                onChanged: (value) => description = value,
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                decoration: const InputDecoration(labelText: "Image URL", border: OutlineInputBorder()),
+                onChanged: (value) => imageUrl = value,
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.amber[800]),
+            onPressed: () {
+              if (name.isNotEmpty) {
+                setState(() {
+                  editableSpots.add(TravelSpot(
+                    name: name,
+                    description: description,
+                    imageUrl: imageUrl,
+                    story: '',      // Model-e 'story' dorkar, tai khali string dilam
+                    bookingUrl: '', // Model-e 'bookingUrl' dorkar
+                    category: '',   // Model-e 'category' dorkar
+                  ));
+                });
+                widget.onSpotsUpdated(editableSpots);
+                Navigator.pop(context);
+              }
+            },
+            child: const Text("Add Spot", style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.grey[100],
       appBar: AppBar(
-        title: const Text("Admin Dashboard"),
-        backgroundColor: Colors.orange,
+        title: const Text("Admin Dashboard", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+        backgroundColor: Colors.amber[800],
+        elevation: 4,
+        centerTitle: true,
       ),
-      body: ListView.builder(
+      body: editableSpots.isEmpty
+          ? const Center(child: Text("No spots found. Click + to add some!"))
+          : ListView.builder(
+        padding: const EdgeInsets.all(16),
         itemCount: editableSpots.length,
         itemBuilder: (context, index) {
           final spot = editableSpots[index];
+
           return Card(
-            margin: const EdgeInsets.all(8),
+            elevation: 4,
+            margin: const EdgeInsets.only(bottom: 16),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
             child: ListTile(
-              leading: Image.network(spot.imageUrl, width: 50, fit: BoxFit.cover),
-              title: Text(spot.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-              subtitle: Text(spot.category),
+              contentPadding: const EdgeInsets.all(12),
+              leading: ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: Image.network(
+                  // ERROR FIX: Null check added here
+                  (spot.imageUrl != null && spot.imageUrl!.isNotEmpty)
+                      ? spot.imageUrl!
+                      : 'https://via.placeholder.com/150',
+                  width: 70,
+                  height: 70,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) =>
+                      Container(width: 70, height: 70, color: Colors.grey[300], child: const Icon(Icons.broken_image)),
+                ),
+              ),
+              // ERROR FIX: spot.name and description safety
+              title: Text(
+                spot.name ?? "Unnamed Spot",
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+              ),
+              subtitle: Padding(
+                padding: const EdgeInsets.only(top: 8.0),
+                child: Text(
+                  spot.description ?? "No description provided.",
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
               trailing: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   IconButton(
-                    icon: const Icon(Icons.edit, color: Colors.blue),
-                    onPressed: () => _showEditDialog(context, index, spot),
+                    icon: const Icon(Icons.edit, color: Colors.blueAccent),
+                    onPressed: () {
+                      // Edit logic can go here
+                    },
                   ),
                   IconButton(
-                    icon: const Icon(Icons.delete, color: Colors.red),
-                    onPressed: () => _deleteSpot(index),
+                    icon: const Icon(Icons.delete_forever, color: Colors.redAccent),
+                    onPressed: () {
+                      setState(() {
+                        editableSpots.removeAt(index);
+                      });
+                      widget.onSpotsUpdated(editableSpots);
+                    },
                   ),
                 ],
               ),
@@ -75,50 +161,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
           );
         },
       ),
-    );
-  }
-
-  // Edit Dialog Box
-  void _showEditDialog(BuildContext context, int index, TravelSpot spot) {
-    final nameController = TextEditingController(text: spot.name);
-    final categoryController = TextEditingController(text: spot.category);
-    final imageController = TextEditingController(text: spot.imageUrl);
-    final storyController = TextEditingController(text: spot.story);
-    final bookingController = TextEditingController(text: spot.bookingUrl);
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text("Edit: ${spot.name}"),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(controller: nameController, decoration: const InputDecoration(labelText: "নাম")),
-              TextField(controller: categoryController, decoration: const InputDecoration(labelText: "ক্যাটেগরি")),
-              TextField(controller: imageController, decoration: const InputDecoration(labelText: "ইমেজ লিঙ্ক")),
-              TextField(controller: storyController, decoration: const InputDecoration(labelText: "গল্প"), maxLines: 3),
-              TextField(controller: bookingController, decoration: const InputDecoration(labelText: "বুকিং লিঙ্ক")),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
-          ElevatedButton(
-            onPressed: () {
-              final updatedSpot = TravelSpot(
-                name: nameController.text,
-                category: categoryController.text,
-                imageUrl: imageController.text,
-                story: storyController.text,
-                bookingUrl: bookingController.text,
-              );
-              _updateSpot(index, updatedSpot);
-              Navigator.pop(context);
-            },
-            child: const Text("Update"),
-          ),
-        ],
+      floatingActionButton: FloatingActionButton(
+        backgroundColor: Colors.amber[800],
+        onPressed: _showAddSpotDialog,
+        child: const Icon(Icons.add, color: Colors.white, size: 35),
       ),
     );
   }
