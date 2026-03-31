@@ -1,6 +1,7 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart'; // Image Picker import
 import '../models/travel_spot.dart';
-import '../travel_spot.dart';
 
 class AdminDashboard extends StatefulWidget {
   final List<TravelSpot> currentSpots;
@@ -18,70 +19,100 @@ class AdminDashboard extends StatefulWidget {
 
 class _AdminDashboardState extends State<AdminDashboard> {
   late List<TravelSpot> editableSpots;
+  File? _pickedImage; // Select kora image store korbe
 
   @override
   void initState() {
     super.initState();
-    // Safe initialization
     editableSpots = List.from(widget.currentSpots);
   }
 
-  // Notun Spot Add korar Dialog
+  // Gallery theke image select korar function
+  Future<void> _pickImage() async {
+    final ImagePicker picker = ImagePicker();
+    final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+
+    if (image != null) {
+      setState(() {
+        _pickedImage = File(image.path);
+      });
+    }
+  }
+
   void _showAddSpotDialog() {
     String name = '';
     String description = '';
-    String imageUrl = '';
+    _pickedImage = null; // Dialog open hole image reset hobe
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text("Add New Travel Spot", style: TextStyle(fontWeight: FontWeight.bold)),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                decoration: const InputDecoration(labelText: "Spot Name", border: OutlineInputBorder()),
-                onChanged: (value) => name = value,
+      builder: (context) => StatefulBuilder( // Dialog-er bhetore setState kaj korar jonno
+        builder: (context, setDialogState) {
+          return AlertDialog(
+            title: const Text("Add New Travel Spot"),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    decoration: const InputDecoration(labelText: "Spot Name"),
+                    onChanged: (value) => name = value,
+                  ),
+                  TextField(
+                    decoration: const InputDecoration(labelText: "Description"),
+                    onChanged: (value) => description = value,
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Image Preview
+                  _pickedImage != null
+                      ? ClipRRect(
+                    borderRadius: BorderRadius.circular(10),
+                    child: Image.file(_pickedImage!, height: 100, width: 100, fit: BoxFit.cover),
+                  )
+                      : Container(
+                    height: 100,
+                    width: 100,
+                    decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(10)),
+                    child: const Icon(Icons.image, size: 50),
+                  ),
+
+                  TextButton.icon(
+                    onPressed: () async {
+                      await _pickImage();
+                      setDialogState(() {}); // Dialog-er preview update korbe
+                    },
+                    icon: const Icon(Icons.add_a_photo),
+                    label: const Text("Select Image"),
+                  ),
+                ],
               ),
-              const SizedBox(height: 10),
-              TextField(
-                decoration: const InputDecoration(labelText: "Description", border: OutlineInputBorder()),
-                maxLines: 3,
-                onChanged: (value) => description = value,
-              ),
-              const SizedBox(height: 10),
-              TextField(
-                decoration: const InputDecoration(labelText: "Image URL", border: OutlineInputBorder()),
-                onChanged: (value) => imageUrl = value,
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
+              ElevatedButton(
+                onPressed: () {
+                  if (name.isNotEmpty) {
+                    setState(() {
+                      editableSpots.add(TravelSpot(
+                        name: name,
+                        description: description,
+                        // Ekhane imageUrl-er jaygay image path-ti pathano hochche
+                        imageUrl: _pickedImage?.path ?? "",
+                        category: "Uncategorized",
+                        story: "",
+                        bookingUrl: "",
+                      ));
+                    });
+                    widget.onSpotsUpdated(editableSpots);
+                    Navigator.pop(context);
+                  }
+                },
+                child: const Text("Add"),
               ),
             ],
-          ),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.amber[800]),
-            onPressed: () {
-              if (name.isNotEmpty) {
-                setState(() {
-                  editableSpots.add(TravelSpot(
-                    name: name,
-                    description: description,
-                    imageUrl: imageUrl,
-                    story: '',      // Model-e 'story' dorkar, tai khali string dilam
-                    bookingUrl: '', // Model-e 'bookingUrl' dorkar
-                    category: '',   // Model-e 'category' dorkar
-                  ));
-                });
-                widget.onSpotsUpdated(editableSpots);
-                Navigator.pop(context);
-              }
-            },
-            child: const Text("Add Spot", style: TextStyle(color: Colors.white)),
-          ),
-        ],
+          );
+        },
       ),
     );
   }
@@ -89,82 +120,38 @@ class _AdminDashboardState extends State<AdminDashboard> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[100],
-      appBar: AppBar(
-        title: const Text("Admin Dashboard", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
-        backgroundColor: Colors.amber[800],
-        elevation: 4,
-        centerTitle: true,
-      ),
-      body: editableSpots.isEmpty
-          ? const Center(child: Text("No spots found. Click + to add some!"))
-          : ListView.builder(
-        padding: const EdgeInsets.all(16),
+      appBar: AppBar(title: const Text("Admin Dashboard"), backgroundColor: Colors.amber[800]),
+      body: ListView.builder(
         itemCount: editableSpots.length,
         itemBuilder: (context, index) {
           final spot = editableSpots[index];
-
           return Card(
-            elevation: 4,
-            margin: const EdgeInsets.only(bottom: 16),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+            margin: const EdgeInsets.all(8),
             child: ListTile(
-              contentPadding: const EdgeInsets.all(12),
               leading: ClipRRect(
-                borderRadius: BorderRadius.circular(10),
-                child: Image.network(
-                  // ERROR FIX: Null check added here
-                  (spot.imageUrl != null && spot.imageUrl!.isNotEmpty)
-                      ? spot.imageUrl!
-                      : 'https://via.placeholder.com/150',
-                  width: 70,
-                  height: 70,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) =>
-                      Container(width: 70, height: 70, color: Colors.grey[300], child: const Icon(Icons.broken_image)),
-                ),
+                borderRadius: BorderRadius.circular(8),
+                child: spot.imageUrl!.startsWith('http')
+                    ? Image.network(spot.imageUrl!, width: 50, height: 50, fit: BoxFit.cover)
+                    : Image.file(File(spot.imageUrl!), width: 50, height: 50, fit: BoxFit.cover),
               ),
-              // ERROR FIX: spot.name and description safety
-              title: Text(
-                spot.name ?? "Unnamed Spot",
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-              ),
-              subtitle: Padding(
-                padding: const EdgeInsets.only(top: 8.0),
-                child: Text(
-                  spot.description ?? "No description provided.",
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              trailing: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.edit, color: Colors.blueAccent),
-                    onPressed: () {
-                      // Edit logic can go here
-                    },
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.delete_forever, color: Colors.redAccent),
-                    onPressed: () {
-                      setState(() {
-                        editableSpots.removeAt(index);
-                      });
-                      widget.onSpotsUpdated(editableSpots);
-                    },
-                  ),
-                ],
+              title: Text(spot.name ?? ""),
+              trailing: IconButton(
+                icon: const Icon(Icons.delete, color: Colors.red),
+                onPressed: () {
+                  setState(() {
+                    editableSpots.removeAt(index);
+                  });
+                  widget.onSpotsUpdated(editableSpots);
+                },
               ),
             ),
           );
         },
       ),
       floatingActionButton: FloatingActionButton(
-        backgroundColor: Colors.amber[800],
         onPressed: _showAddSpotDialog,
-        child: const Icon(Icons.add, color: Colors.white, size: 35),
+        backgroundColor: Colors.amber[800],
+        child: const Icon(Icons.add),
       ),
     );
   }
