@@ -6,7 +6,7 @@ class TravelSpot {
   final String story;
   final String bookingUrl;
   final String category; // Category dynamic field support logic update
-
+  final String? guidePhone;
   TravelSpot({
     required this.name,
     required this.imageUrl,
@@ -14,6 +14,7 @@ class TravelSpot {
     required this.story,
     required this.bookingUrl,
     required this.category,
+    this.guidePhone,
   });
 }
 
@@ -21,9 +22,10 @@ List<TravelSpot> spots = [
   TravelSpot(
     name: "সুন্দরবন",
     category: "বন",
-    imageUrl: "https://images.unsplash.com/photo-1591129841117-3adfd313e34f",
-    story: "সুন্দরবন হলো বিশ্বের বৃহত্তম ম্যানগ্রোভ বন এবং ইউনেস্কো ওয়ার্ল্ড হেরিটেজ সাইট।",
-    bookingUrl: "https://www.shohoz.com", description: '',
+    imageUrl: "https://images.unsplash.com/...",
+    story: "সুন্দরবন হলো বিশ্বের বৃহত্তম ম্যানগ্রোভ বন...",
+    bookingUrl: "https://www.shohoz.com",
+    description: "কিছু একটা বর্ণনা",
+    guidePhone: "017XXXXXXXX",
   ),
-  // Baki spots gulo thik eivabe 5-ti field diye add korun
 ];
